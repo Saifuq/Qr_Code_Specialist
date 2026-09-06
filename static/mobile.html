@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PC Mobile Controller | QR Connect Specialist</title>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Mobile CSS -->
+    <link rel="stylesheet" href="/static/css/mobile.css">
+</head>
+<body>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <div class="brand-mobile">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <h2>PC Controller v2.0</h2>
+        </div>
+        <div class="connection-banner status-pending" id="connection-badge">
+            <i class="fa-solid fa-circle-notch fa-spin"></i> Connecting...
+        </div>
+    </header>
+
+    <!-- Pending / Security / PIN Entry Authorization Screen -->
+    <div class="pending-container" id="pending-screen">
+        <div class="spinner" id="pending-spinner"></div>
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;" id="pending-title">Pairing Request Sent</h2>
+        <p style="font-size: 14px; color: var(--text-sub); max-width: 290px; line-height: 1.5; margin-bottom: 20px;" id="pending-msg">
+            Please click <strong>"Accept Connection"</strong> on your PC screen to establish pairing.
+        </p>
+
+        <!-- PIN Fallback Form -->
+        <div id="pin-entry-box" style="display: none; width: 100%; max-width: 300px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px;">
+            <h4 style="font-size: 14px; margin-bottom: 10px;">Enter 4-Digit PC PIN</h4>
+            <input type="number" id="pin-input" placeholder="e.g. 4892" maxlength="4" style="width: 100%; padding: 12px; font-size: 20px; text-align: center; font-weight: 700; letter-spacing: 4px; background: #000; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); border-radius: 10px; margin-bottom: 12px; outline: none;">
+            <button class="m-btn m-btn-primary" onclick="submitPinCode()">
+                <i class="fa-solid fa-key"></i> Pair with PIN
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Controller Application (Hidden until approved) -->
+    <div id="main-app-container" style="display: none;">
+
+        <!-- TAB 1: ⚡ Remote Control -->
+        <div class="tab-content active" id="tab-remote">
+            
+            <!-- Media Player Controls -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-circle-play"></i> Native Media Playback
+                </div>
+
+                <div class="media-controls-grid">
+                    <button class="control-btn" onclick="sendRemoteCommand('media_prev')" title="Previous Track">
+                        <i class="fa-solid fa-backward-step"></i>
+                        <span>PREV</span>
+                    </button>
+                    <button class="control-btn" onclick="sendRemoteCommand('media_play_pause')" style="color: var(--accent-cyan);" title="Play/Pause">
+                        <i class="fa-solid fa-play"></i>
+                        <span>PLAY/PAUSE</span>
+                    </button>
+                    <button class="control-btn" onclick="sendRemoteCommand('media_next')" title="Next Track">
+                        <i class="fa-solid fa-forward-step"></i>
+                        <span>NEXT</span>
+                    </button>
+                </div>
+
+                <div class="m-card-title" style="margin-top: 10px; margin-bottom: 8px;">
+                    <i class="fa-solid fa-volume-high"></i> Master Volume
+                </div>
+
+                <div class="volume-slider-box">
+                    <button class="control-btn" style="width: 44px; height: 44px;" onclick="sendRemoteCommand('volume_mute')">
+                        <i class="fa-solid fa-volume-xmark"></i>
+                    </button>
+                    <input type="range" class="slider" id="volume-range" min="0" max="100" value="70" onchange="sendVolumeChange(this.value)">
+                </div>
+            </div>
+
+            <!-- Quick App Launcher -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-rocket"></i> Launch PC Apps
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); grid-gap: 8px;">
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('launch_app', 'calc')">
+                        <i class="fa-solid fa-calculator" style="color: var(--accent-cyan);"></i>
+                        <span style="font-size: 10px;">Calc</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('launch_app', 'notepad')">
+                        <i class="fa-solid fa-file-lines" style="color: var(--accent-emerald);"></i>
+                        <span style="font-size: 10px;">Notepad</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('launch_app', 'taskmgr')">
+                        <i class="fa-solid fa-chart-line" style="color: var(--accent-rose);"></i>
+                        <span style="font-size: 10px;">TaskMgr</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('launch_app', 'explorer')">
+                        <i class="fa-solid fa-folder" style="color: var(--accent-amber);"></i>
+                        <span style="font-size: 10px;">Files</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Action Deck -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-bolt"></i> System Actions
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; grid-gap: 12px;">
+                    <button class="control-btn" onclick="sendRemoteCommand('lock_pc')">
+                        <i class="fa-solid fa-lock" style="color: var(--accent-amber);"></i>
+                        <span>Lock Workstation</span>
+                    </button>
+                    <button class="control-btn" onclick="sendRemoteCommand('open_browser')">
+                        <i class="fa-solid fa-globe" style="color: var(--accent-blue);"></i>
+                        <span>Open Browser</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TAB 2: 📁 File Transfer -->
+        <div class="tab-content" id="tab-files">
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Send File to PC
+                </div>
+
+                <div class="upload-dropzone" onclick="document.getElementById('mobile-file-input').click()">
+                    <i class="fa-solid fa-file-circle-plus"></i>
+                    <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 4px;">Tap to Select File</h3>
+                    <p style="font-size: 12px; color: var(--text-sub);">Photos, documents, audio, or archives</p>
+                    <input type="file" id="mobile-file-input" style="display: none;" onchange="handleFileSelection(event)">
+                </div>
+
+                <div id="file-progress-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+                        <span id="upload-filename">file</span>
+                        <span id="upload-pct">0%</span>
+                    </div>
+                    <div class="progress-bar-m" style="display: block;">
+                        <div class="progress-fill-m" id="upload-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Transfer Log
+                </div>
+                <div id="mobile-file-history" style="font-size: 13px; color: var(--text-sub);">
+                    Uploaded files will appear here.
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: 📋 Clipboard Sync -->
+        <div class="tab-content" id="tab-clipboard">
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-copy"></i> Clipboard Sync
+                </div>
+
+                <div class="clipboard-input-group">
+                    <textarea class="m-input" id="mobile-clipboard-input" placeholder="Type or paste text to send directly to PC clipboard..."></textarea>
+                    <button class="m-btn m-btn-primary" onclick="sendMobileClipboard()">
+                        <i class="fa-solid fa-paper-plane"></i> Send to PC Clipboard
+                    </button>
+                </div>
+            </div>
+
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-list-ul"></i> Synced Entries
+                </div>
+                <div id="mobile-clipboard-feed" style="font-size: 13px;">
+                    No shared items yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: 📊 PC Screen & Hardware Monitor -->
+        <div class="tab-content" id="tab-monitor">
+            <!-- Screen Preview Card -->
+            <div class="m-card">
+                <div class="m-card-title" style="justify-content: space-between;">
+                    <span><i class="fa-solid fa-desktop"></i> Live PC Screen Snapshot</span>
+                    <button class="control-btn" style="width: auto; height: auto; padding: 4px 10px; font-size: 12px;" onclick="refreshPCScreenShot()">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh
+                    </button>
+                </div>
+                <div style="background: #000; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                    <img id="pc-screen-img" src="/api/screenshot" alt="PC Screen" style="width: 100%; display: block;">
+                </div>
+            </div>
+
+            <!-- Hardware Stats Card -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-gauge-high"></i> Live PC Hardware Stats
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                            <span><i class="fa-solid fa-cpu" style="color: var(--accent-cyan);"></i> CPU Usage</span>
+                            <span id="m-cpu-val" style="font-weight: 700;">0%</span>
+                        </div>
+                        <div class="progress-bar-m" style="display: block;">
+                            <div class="progress-fill-m" id="m-cpu-bar" style="background: var(--accent-cyan);"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                            <span><i class="fa-solid fa-memory" style="color: var(--accent-emerald);"></i> Memory (RAM)</span>
+                            <span id="m-ram-val" style="font-weight: 700;">0%</span>
+                        </div>
+                        <div class="progress-bar-m" style="display: block;">
+                            <div class="progress-fill-m" id="m-ram-bar" style="background: var(--accent-emerald);"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                            <span><i class="fa-solid fa-hard-drive" style="color: var(--accent-amber);"></i> Storage Space</span>
+                            <span id="m-disk-val" style="font-weight: 700;">0%</span>
+                        </div>
+                        <div class="progress-bar-m" style="display: block;">
+                            <div class="progress-fill-m" id="m-disk-bar" style="background: var(--accent-amber);"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: 🎮 Virtual Touchpad & Slides Remote -->
+        <div class="tab-content" id="tab-touchpad">
+
+            <!-- Slide Presentation Mode -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-person-chalkboard"></i> Presentation Remote
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); grid-gap: 10px;">
+                    <button class="control-btn" onclick="sendRemoteCommand('slide_prev')">
+                        <i class="fa-solid fa-chevron-left"></i>
+                        <span>PREV SLIDE</span>
+                    </button>
+                    <button class="control-btn" style="color: var(--accent-emerald);" onclick="sendRemoteCommand('slide_start')">
+                        <i class="fa-solid fa-play"></i>
+                        <span>START (F5)</span>
+                    </button>
+                    <button class="control-btn" onclick="sendRemoteCommand('slide_next')">
+                        <i class="fa-solid fa-chevron-right"></i>
+                        <span>NEXT SLIDE</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Touchpad Surface -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-hand-pointer"></i> Touchpad Controller
+                </div>
+
+                <div class="touchpad-surface" id="touchpad-area">
+                    <i class="fa-solid fa-fingerprint"></i>
+                    <span>Drag finger to move PC cursor</span>
+                    <span>Tap to Left-Click</span>
+                </div>
+
+                <div class="touchpad-buttons">
+                    <button class="control-btn" onclick="sendTouchpadAction('left_click')">
+                        <i class="fa-solid fa-mouse"></i>
+                        <span>Left Click</span>
+                    </button>
+                    <button class="control-btn" onclick="sendTouchpadAction('right_click')">
+                        <i class="fa-regular fa-square"></i>
+                        <span>Right Click</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('remote', this)">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Remote</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('files', this)">
+            <i class="fa-solid fa-folder-open"></i>
+            <span>Files</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('clipboard', this)">
+            <i class="fa-solid fa-copy"></i>
+            <span>Clipboard</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('monitor', this)">
+            <i class="fa-solid fa-desktop"></i>
+            <span>Screen/Stats</span>
+        </div>
+        <div class="nav-item" onclick="switchTab('touchpad', this)">
+            <i class="fa-solid fa-gamepad"></i>
+            <span>Touchpad</span>
+        </div>
+    </nav>
+
+    <!-- Mobile Script -->
+    <script src="/static/js/mobile.js"></script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Specialist Connector | PC Master Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Header Navbar -->
+    <nav class="navbar">
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-qrcode"></i>
+            </div>
+            <div class="brand-text">
+                <h1>QR Code Specialist Connector</h1>
+                <p>Real-time Scan-to-Connect Device Synchronization Hub</p>
+            </div>
+        </div>
+
+        <div class="server-pills">
+            <div class="pill">
+                <span class="pill-label"><i class="fa-solid fa-wifi"></i> PC IP:</span>
+                <span class="pill-value" id="pc-ip-display">Detecting...</span>
+            </div>
+            <div class="pill">
+                <span class="pill-label">PORT:</span>
+                <span class="pill-value" id="pc-port-display">8000</span>
+            </div>
+            <div class="status-badge" id="ws-status-badge">
+                <div class="pulse-dot"></div>
+                <span id="ws-status-text">Server Online</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Grid -->
+    <div class="dashboard-grid">
+
+        <!-- Left Column: QR Generator & Pairing Gatekeeper -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fa-solid fa-qrcode"></i> Scan-to-Connect
+                </div>
+                <button class="btn btn-secondary" onclick="refreshQRCode()" title="Generate New QR">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+            </div>
+
+            <div class="qr-wrapper">
+                <div class="qr-box">
+                    <img id="qr-image" src="/api/qr" alt="Scan QR Code to Connect">
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px;">
+                    <div style="background: rgba(0,242,254,0.1); border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 14px; letter-spacing: 2px;">
+                        PIN: <span id="pin-display">----</span>
+                    </div>
+                </div>
+
+                <div class="timer-bar-container">
+                    <div class="timer-bar" id="token-timer-bar"></div>
+                </div>
+
+                <div class="timer-text">
+                    Pairing token expires in: <span id="token-countdown">05:00</span>
+                </div>
+
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 14px;">
+                    Scan QR code or enter 4-digit PIN on mobile browser.
+                </p>
+
+                <div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 12px;">
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="changeQRTheme('cyan')">Cyan</button>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="changeQRTheme('green')">Green</button>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="changeQRTheme('violet')">Violet</button>
+                    <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="changeQRTheme('amber')">Amber</button>
+                </div>
+
+                <button class="btn btn-primary copy-url-btn" onclick="copyConnectURL()">
+                    <i class="fa-solid fa-link"></i> Copy Direct Connect Link
+                </button>
+            </div>
+        </div>
+
+        <!-- Center Column: Hardware Metrics, Files Hub & Clipboard -->
+        <div class="main-center-column">
+
+            <!-- Hardware Resource Gauges -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-microchip"></i> Live PC Performance Monitor
+                    </div>
+                    <span style="font-size: 12px; color: var(--text-secondary);" id="metrics-updated-at">Updating...</span>
+                </div>
+
+                <div class="metrics-grid">
+                    <!-- CPU Metric -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-cpu"></i> CPU Usage</span>
+                            <span class="metric-value" id="cpu-val">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-cyan" id="cpu-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- RAM Metric -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-memory"></i> RAM Usage</span>
+                            <span class="metric-value" id="ram-val">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-emerald" id="ram-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- DISK Metric -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-hard-drive"></i> Storage</span>
+                            <span class="metric-value" id="disk-val">0%</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-amber" id="disk-bar"></div>
+                        </div>
+                    </div>
+
+                    <!-- NETWORK Metric -->
+                    <div class="metric-card">
+                        <div class="metric-header">
+                            <span class="metric-label"><i class="fa-solid fa-network-wired"></i> Network IO</span>
+                            <span class="metric-value" style="font-size: 16px;" id="net-val">0 KB/s</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill fill-rose" id="net-bar" style="width: 45%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Received Files Hub -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-folder-open"></i> Received Files Hub
+                    </div>
+                    <span style="font-size: 12px; color: var(--text-secondary);" id="files-count">0 files</span>
+                </div>
+
+                <div class="files-list" id="files-list-container">
+                    <p style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 13px;">
+                        No files received yet. Upload files from paired phone.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Shared Clipboard Sync -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-clipboard"></i> Shared Clipboard Feed
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="sendPCClipboard()">
+                        <i class="fa-solid fa-plus"></i> Add PC Clipboard
+                    </button>
+                </div>
+
+                <div class="clipboard-list" id="clipboard-list-container">
+                    <p style="text-align: center; color: var(--text-secondary); padding: 16px; font-size: 13px;">
+                        Clipboard history empty. Text copied on phone will sync here automatically.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Connected Devices & Event Console -->
+        <div class="main-right-column" style="display: flex; flex-direction: column; gap: 24px;">
+
+            <!-- Paired Devices Panel -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-mobile-screen"></i> Active Paired Devices
+                    </div>
+                    <span class="pill-value" id="devices-count-pill">0 Active</span>
+                </div>
+
+                <div class="devices-list" id="active-devices-container">
+                    <p style="text-align: center; color: var(--text-secondary); padding: 20px; font-size: 13px;">
+                        No devices connected. Scan QR code above to pair.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Real-Time WebSocket Action Console -->
+            <div class="card" style="flex: 1;">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fa-solid fa-terminal"></i> Event Stream & Console
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="clearConsole()">Clear</button>
+                </div>
+
+                <div class="console-box" id="console-stream">
+                    <div class="console-line"><span class="console-time">[SYSTEM]</span> Server initialized. Ready for device connection.</div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Security Pairing Confirmation Modal -->
+    <div class="modal-overlay" id="pairing-modal-overlay">
+        <div class="pairing-modal">
+            <div class="modal-icon">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h3 class="modal-title">Pairing Request</h3>
+            <p class="modal-subtitle">A new device wants to connect to your PC</p>
+
+            <div class="device-details-card">
+                <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;" id="modal-dev-name">📱 Mobile Device</div>
+                <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 4px;" id="modal-dev-os">OS: Mobile Browser</div>
+                <div style="font-size: 13px; color: var(--text-secondary);" id="modal-dev-ip">IP: 192.168.1.X</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-danger" onclick="rejectPairingRequest()">
+                    <i class="fa-solid fa-xmark"></i> Reject
+                </button>
+                <button class="btn btn-primary" onclick="acceptPairingRequest()">
+                    <i class="fa-solid fa-check"></i> Accept Connection
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
