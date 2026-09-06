@@ -1,6 +1,7 @@
 import asyncio
 import io
 import os
+import sys
 import socket
 import secrets
 import time
@@ -19,6 +20,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+# Try importing pyngrok for global tunneling
+try:
+    from pyngrok import ngrok
+    HAS_NGROK = True
+except ImportError:
+    HAS_NGROK = False
+
 # Directories
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -32,8 +40,11 @@ if not os.path.exists(gitkeep_path):
     with open(gitkeep_path, "w") as f:
         f.write("")
 
-# Server Constants & State
+# Server Constants & Network State
 PORT = 8000
+global_public_url: Optional[str] = os.environ.get("PUBLIC_URL", None)
+network_mode: str = "global" if global_public_url else "local"
+
 pair_tokens: Dict[str, dict] = {}
 pin_to_token: Dict[str, str] = {}
 uploaded_files_history: List[dict] = []
@@ -96,6 +107,28 @@ def win_mouse_click(action: str):
         print(f"[WinAPI Click Error] {e}")
 
 
+def play_sound_effect(sound_type: str):
+    """Play hardware sound chimes on PC speakers using WinAPI Beep."""
+    try:
+        beep = ctypes.windll.kernel32.Beep
+        if sound_type == "chime":
+            beep(523, 120)  # C5
+            beep(659, 120)  # E5
+            beep(784, 200)  # G5
+        elif sound_type == "bell":
+            beep(880, 250)  # A5
+            beep(1046, 300) # C6
+        elif sound_type == "alarm":
+            for _ in range(3):
+                beep(900, 80)
+                beep(450, 80)
+        elif sound_type == "laser":
+            for f in range(1400, 400, -100):
+                beep(f, 15)
+    except Exception as e:
+        print(f"[Beep Sound Error] {e}")
+
+
 def get_local_ip() -> str:
     """Retrieve the primary local IP address of the host PC."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -110,6 +143,13 @@ def get_local_ip() -> str:
 
 
 LOCAL_IP = get_local_ip()
+
+
+def get_active_base_url() -> str:
+    """Get active base URL based on network mode (Global Tunnel vs Local LAN)."""
+    if network_mode == "global" and global_public_url:
+        return global_public_url
+    return f"http://{LOCAL_IP}:{PORT}"
 
 
 class ConnectionManager:
@@ -187,7 +227,8 @@ def create_pairing_token() -> dict:
     pin = f"{secrets.randbelow(9000) + 1000}"
     created_at = time.time()
     expires_at = created_at + 300  # 5 minutes
-    connect_url = f"http://{LOCAL_IP}:{PORT}/connect?token={token}"
+    base_url = get_active_base_url()
+    connect_url = f"{base_url}/connect?token={token}"
 
     token_data = {
         "token": token,
@@ -228,6 +269,22 @@ def generate_qr_image_bytes(url: str, color_theme: str = "cyan") -> bytes:
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
+
+
+def start_global_tunnel():
+    """Start pyngrok tunnel to make server globally available over Internet."""
+    global global_public_url, network_mode
+    if HAS_NGROK:
+        try:
+            print("[TUNNEL] Initializing pyngrok public HTTPS tunnel...")
+            tunnel = ngrok.connect(PORT)
+            global_public_url = tunnel.public_url.replace("http://", "https://")
+            network_mode = "global"
+            print(f" [TUNNEL SUCCESS] Global Public URL: {global_public_url}")
+            return global_public_url
+        except Exception as e:
+            print(f"[Tunnel Error] Could not start pyngrok tunnel automatically: {e}")
+    return None
 
 
 # Background Task: System Metrics Monitor
@@ -281,23 +338,33 @@ async def system_metrics_loop():
 # FastAPI Lifespan Handler
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if "--global" in sys.argv or os.environ.get("ENABLE_GLOBAL", "0") == "1":
+        start_global_tunnel()
+
     metrics_task = asyncio.create_task(system_metrics_loop())
     print("==========================================================")
-    print(" [SERVER] QR CODE SPECIALIST CONNECTOR SERVER RUNNING v2.0")
+    print(" [SERVER] QR CODE SPECIALIST CONNECTOR SERVER RUNNING v2.5")
     print(f" [PC] Local IP: {LOCAL_IP}")
     print(f" [PC] Dashboard: http://localhost:{PORT}")
-    print(f" [MOBILE] Connect URL: {current_token_data['connect_url']}")
+    print(f" [MODE] Network Mode: {network_mode.upper()}")
+    print(f" [ACTIVE BASE URL] {get_active_base_url()}")
+    print(f" [MOBILE CONNECT URL] {current_token_data['connect_url']}")
     print(f" [PIN] Pairing Code: {current_token_data['pin']}")
     print("==========================================================")
     yield
     metrics_task.cancel()
+    if HAS_NGROK and network_mode == "global":
+        try:
+            ngrok.disconnect(global_public_url)
+        except Exception:
+            pass
 
 
 # Initialize FastAPI App
 app = FastAPI(
     title="QR Code Specialist Connector",
     description="Scan-to-Connect Device Synchronization & Real-time PC Controller Hub",
-    version="2.0.0",
+    version="2.5.0",
     lifespan=lifespan
 )
 
@@ -335,11 +402,50 @@ async def get_server_info():
     return {
         "local_ip": LOCAL_IP,
         "port": PORT,
+        "network_mode": network_mode,
+        "base_url": get_active_base_url(),
         "connect_url": current_token_data["connect_url"],
         "token": current_token_data["token"],
         "pin": current_token_data["pin"],
         "expires_in": max(0, int(current_token_data["expires_at"] - time.time())),
         "active_devices_count": len(manager.mobile_connections)
+    }
+
+
+@app.post("/api/mode/toggle")
+async def toggle_network_mode(payload: dict):
+    global network_mode, global_public_url, current_token_data
+    target_mode = payload.get("mode", "local")
+    custom_url = payload.get("public_url", "").strip()
+
+    if target_mode == "global":
+        if custom_url:
+            global_public_url = custom_url.rstrip("/")
+            network_mode = "global"
+        else:
+            tunnel_url = start_global_tunnel()
+            if not tunnel_url and not global_public_url:
+                raise HTTPException(status_code=400, detail="Global tunnel could not be started. Provide a public URL or set ngrok auth token.")
+            network_mode = "global"
+    else:
+        network_mode = "local"
+
+    current_token_data = create_pairing_token()
+
+    await manager.broadcast_to_pc({
+        "type": "mode_changed",
+        "data": {
+            "network_mode": network_mode,
+            "base_url": get_active_base_url(),
+            "token": current_token_data["token"],
+            "connect_url": current_token_data["connect_url"]
+        }
+    })
+
+    return {
+        "network_mode": network_mode,
+        "base_url": get_active_base_url(),
+        "connect_url": current_token_data["connect_url"]
     }
 
 
@@ -483,6 +589,8 @@ async def websocket_pc_endpoint(websocket: WebSocket):
     await websocket.send_json({
         "type": "init_pc_state",
         "data": {
+            "network_mode": network_mode,
+            "base_url": get_active_base_url(),
             "token_info": current_token_data,
             "active_devices": devices_list,
             "recent_files": uploaded_files_history[:10],
@@ -568,10 +676,12 @@ async def websocket_mobile_endpoint(websocket: WebSocket):
     device_id = websocket.query_params.get("device_id", secrets.token_hex(8))
     device_name = websocket.query_params.get("device_name", "Mobile Phone")
     os_info = websocket.query_params.get("os", "Mobile Web")
+    battery_level = websocket.query_params.get("battery", "100")
 
     device_info = {
         "name": device_name,
         "os": os_info,
+        "battery": battery_level,
         "ip": websocket.client.host if websocket.client else "Unknown",
         "device_id": device_id
     }
@@ -636,6 +746,8 @@ async def websocket_mobile_endpoint(websocket: WebSocket):
                     send_win_key(VK_VOLUME_DOWN)
                 elif cmd == "volume_mute" or cmd == "mute_all":
                     send_win_key(VK_VOLUME_MUTE)
+                elif cmd == "play_sound":
+                    play_sound_effect(str(val or "chime"))
                 elif cmd == "slide_next":
                     send_win_key(VK_NEXT)
                 elif cmd == "slide_prev":
@@ -649,6 +761,11 @@ async def websocket_mobile_endpoint(websocket: WebSocket):
                         ctypes.windll.user32.LockWorkStation()
                     except Exception as e:
                         print(f"[Lock Workstation Error] {e}")
+                elif cmd == "sleep_pc":
+                    try:
+                        subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
+                    except Exception as e:
+                        print(f"[Sleep PC Error] {e}")
                 elif cmd == "open_browser":
                     webbrowser.open("https://google.com")
                 elif cmd == "launch_app":

@@ -32,6 +32,13 @@
 
         <div class="server-pills">
             <div class="pill">
+                <span class="pill-label"><i class="fa-solid fa-globe"></i> MODE:</span>
+                <span class="pill-value" id="network-mode-pill">LOCAL WI-FI</span>
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="toggleNetworkModePrompt()" id="mode-toggle-btn">
+                <i class="fa-solid fa-earth-americas"></i> Enable Global Mode
+            </button>
+            <div class="pill">
                 <span class="pill-label"><i class="fa-solid fa-wifi"></i> PC IP:</span>
                 <span class="pill-value" id="pc-ip-display">Detecting...</span>
             </div>

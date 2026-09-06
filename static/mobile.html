@@ -107,6 +107,32 @@
                 </div>
             </div>
 
+            <!-- Soundboard & Chime Deck -->
+            <div class="m-card">
+                <div class="m-card-title">
+                    <i class="fa-solid fa-music"></i> PC Speaker Soundboard
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); grid-gap: 8px;">
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('play_sound', 'chime')">
+                        <i class="fa-solid fa-bell" style="color: var(--accent-cyan);"></i>
+                        <span style="font-size: 10px;">Chime</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('play_sound', 'bell')">
+                        <i class="fa-solid fa-concierge-bell" style="color: var(--accent-emerald);"></i>
+                        <span style="font-size: 10px;">Bell</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('play_sound', 'alarm')">
+                        <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-rose);"></i>
+                        <span style="font-size: 10px;">Alarm</span>
+                    </button>
+                    <button class="control-btn" style="height: 54px; font-size: 16px;" onclick="sendRemoteCommand('play_sound', 'laser')">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--accent-amber);"></i>
+                        <span style="font-size: 10px;">Laser</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- Quick Action Deck -->
             <div class="m-card">
                 <div class="m-card-title">

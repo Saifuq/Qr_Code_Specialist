@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let currentTheme = "cyan";
+let currentMode = "local";
 
 // Fetch Server Info & IP
 async function fetchServerInfo() {
@@ -22,14 +23,67 @@ async function fetchServerInfo() {
         document.getElementById("pc-ip-display").innerText = data.local_ip;
         document.getElementById("pc-port-display").innerText = data.port;
         document.getElementById("pin-display").innerText = data.pin || "----";
+        
+        currentMode = data.network_mode || "local";
+        updateNetworkModeUI(currentMode, data.base_url);
+
         currentToken = data.token;
         currentConnectURL = data.connect_url;
 
         startTokenCountdown(data.expires_in);
-        logConsole(`Server running at IP ${data.local_ip}:${data.port}`, "cmd");
+        logConsole(`Server running in ${currentMode.toUpperCase()} mode at ${data.base_url}`, "cmd");
     } catch (err) {
         console.error("Failed fetching server info:", err);
         logConsole("Failed to retrieve server local network IP.", "warn");
+    }
+}
+
+function updateNetworkModeUI(mode, baseUrl) {
+    const pill = document.getElementById("network-mode-pill");
+    const btn = document.getElementById("mode-toggle-btn");
+    
+    if (mode === "global") {
+        pill.innerText = "GLOBAL INTERNET 🌐";
+        pill.style.color = "var(--accent-emerald)";
+        btn.innerHTML = `<i class="fa-solid fa-house"></i> Switch to Local Wi-Fi`;
+    } else {
+        pill.innerText = "LOCAL WI-FI 🏠";
+        pill.style.color = "var(--accent-cyan)";
+        btn.innerHTML = `<i class="fa-solid fa-earth-americas"></i> Enable Global Mode`;
+    }
+}
+
+async function toggleNetworkModePrompt() {
+    const targetMode = currentMode === "local" ? "global" : "local";
+    let customUrl = "";
+
+    if (targetMode === "global") {
+        customUrl = prompt("Enter your Public Tunnel / Domain URL (or leave blank to use pyngrok tunnel):\ne.g. https://xxxx.ngrok-free.app or https://xxxx.trycloudflare.com", "") || "";
+    }
+
+    try {
+        const res = await fetch("/api/mode/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: targetMode, public_url: customUrl })
+        });
+        
+        if (!res.ok) {
+            const errData = await res.json();
+            alert(`Mode switch error: ${errData.detail || "Failed switching mode"}`);
+            return;
+        }
+
+        const data = await res.json();
+        currentMode = data.network_mode;
+        currentConnectURL = data.connect_url;
+        updateNetworkModeUI(currentMode, data.base_url);
+        document.getElementById("qr-image").src = `/api/qr?token=${data.connect_url}&t=${Date.now()}`;
+        
+        logConsole(`Switched network mode to ${currentMode.toUpperCase()} (${data.base_url})`, "pair");
+        alert(`Switched to ${currentMode.toUpperCase()} Mode!\nConnect URL: ${data.connect_url}`);
+    } catch (e) {
+        alert("Error toggling network mode.");
     }
 }
 
